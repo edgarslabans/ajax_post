@@ -1,3 +1,3 @@
 def add_something(inp):
-    t_outp = inp + "[added in core calc]"
+    t_outp = float(inp) + 3.33
     return t_outp

@@ -4,8 +4,10 @@ from django.db import models
 
 class Participant(models.Model):
     # participant form fields
-    first_name = models.CharField(max_length=100)
-    last_name = models.CharField(max_length=100)
+    length = models.CharField(max_length=100)
+    height = models.CharField(max_length=100)
+    rez = models.CharField(max_length=100)
+
 
     class Meta:
         db_table = "participants"
