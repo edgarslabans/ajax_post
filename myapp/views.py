@@ -20,15 +20,13 @@ def postParticipant(request):
         # get the form data
         form = ParticipantForm(request.POST)
 
+        # adjusting request with new data
         post = request.POST.copy()  # to make it mutable
-
-
-        post['length'] = add_something(post['length'])
-
+        post['height'] = add_something(post['length'])
         form = ParticipantForm(post)
 
 
-        print("type", type(form), form['length'].value())
+        #print("type", type(form), form['length'].value(), "is valid", form.is_valid)
 
         # save the data and after fetch the object in instance
         if form.is_valid():
@@ -38,6 +36,7 @@ def postParticipant(request):
             ser_instance = serializers.serialize('json', [instance, ])
             # send to client side.
 
+            #print("ttttt", {"instance": ser_instance})
             return JsonResponse({"instance": ser_instance}, status=200)
             # return JsonResponse({"instance": {"first_name": "bar","last_name": "2bar"}}, status=200)
 
@@ -45,7 +44,8 @@ def postParticipant(request):
             # some form errors occured.
             return JsonResponse({"error": form.errors}, status=400)
 
-    # some error occured
+    # some error occured+
+
     return JsonResponse({"error": ""}, status=400)
 
 

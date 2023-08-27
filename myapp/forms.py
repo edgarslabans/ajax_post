@@ -6,7 +6,7 @@ import datetime
 class ParticipantForm(forms.ModelForm):
     ## set the label name of the date field.
     # = forms.DateField()
-    rez = forms.CharField(widget=forms.HiddenInput())
+
 
 
     class Meta:

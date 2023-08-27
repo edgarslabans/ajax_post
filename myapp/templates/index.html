@@ -22,25 +22,7 @@
 
 <p id="test1">This is a paragraph.</p>
 
-<div class="container">
-    <table class="table table-bordered" id="showdata">
-        <thead>
-            <tr>
-                <th scope="col">First Name</th>
-                <th scope="col">Last Name</th>
-            </tr>
-        </thead>
-        <tbody>
-        {% for parti in participants %}
-        <tr>
-            <td>{{parti.first_name}}</td>
-            <td>{{parti.last_name}}</td>
 
-        </tr>
-        {% endfor %}
-        </tbody>
-    </table>
-</div>
 
 
 {% endblock content %}
@@ -52,15 +34,17 @@
         e.preventDefault();
         // serialize the data for sending the form data.
         var serializedData = $(this).serialize();
+
         // Ajax Call
         $.ajax({
             type: 'POST',
             url: "{% url 'post_participant' %}",
             data: serializedData,
+
 			// handle a successful response
             success: function (response) {
                 // On successful, clear all form data
-                $("#participant-form").trigger('reset');
+                //$("#participant-form").trigger('reset');
 
 
 
@@ -68,14 +52,10 @@
                 var instance = JSON.parse(response["instance"]);
                 var fields = instance[0]["fields"];
 
-                $("#test1").text(fields["first_name"]||"");
-                $("#showdata tbody").prepend(
-                   `<tr>
-                    <td>${fields["first_name"]||""}</td>
-                    <td>${"adjusted here"}</td>
+				// writing the output field
 
-                    </tr>`
-                )
+                $("#test1").text(fields["height"]||"");
+
             },
             error: function (response) {
                 // alert non successful response
