@@ -4,8 +4,20 @@ from django.db import models
 
 class Participant(models.Model):
     # participant form fields
-    length = models.CharField(max_length=100)
-    height = models.CharField(max_length=100)
+    EI = models.CharField(max_length=100)
+    GA = models.CharField(max_length=100)
+
+    L0 = models.CharField(max_length=100)
+    L1 = models.CharField(max_length=100)
+    L2 = models.CharField(max_length=100)
+    L3 = models.CharField(max_length=100)
+
+    LP1 = models.CharField(max_length=100)
+    LP2 = models.CharField(max_length=100)
+
+    LP1_load = models.CharField(max_length=100)
+    LP2_load = models.CharField(max_length=100)
+
 
 
 

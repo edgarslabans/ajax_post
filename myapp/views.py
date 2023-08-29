@@ -5,6 +5,8 @@ from .forms import ParticipantForm
 from .models import Participant
 from .core_calculations import add_something
 
+from .FEM_beam_met_puntlast import calculate_beam
+
 import json
 
 
@@ -20,10 +22,14 @@ def postParticipant(request):
         # get the form data
         form = ParticipantForm(request.POST)
 
+        # calculation module
+        displacc = calculate_beam()  # he
+
         # adjusting request with new data
         post = request.POST.copy()  # to make it mutable
-        post['height'] = add_something(post['length'])
+        post['height'] = displacc # add_something(post['length'])
         form = ParticipantForm(post)
+
 
 
         #print("type", type(form), form['length'].value(), "is valid", form.is_valid)

@@ -13,7 +13,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 
-def define_input():
+def calculate_beam():
 
     nmm = False
     # Structure Input
@@ -58,194 +58,194 @@ def define_input():
     # A = (h_total-2*t_skin)*b_total
     # I= (b_total * h_total^3)/12 - (b_total * (h_total - t_skin*2)^3)/12
 
-class Beam:
-    def __init__(self, young, inertia, node, bar):
-        self.young = young
-        self.inertia = inertia
-        self.node = node.astype(float)
-        self.bar = bar.astype(int)
+    class Beam:
+        def __init__(self, young, inertia, node, bar):
+            self.young = young
+            self.inertia = inertia
+            self.node = node.astype(float)
+            self.bar = bar.astype(int)
 
-        self.dof = 2
-        self.point_load = np.zeros_like(node)
-        self.distributed_load = np.zeros([len(bar), 2])
-        self.support = np.ones_like(node).astype(int)
-        self.section = np.ones(len(bar))
+            self.dof = 2
+            self.point_load = np.zeros_like(node)
+            self.distributed_load = np.zeros([len(bar), 2])
+            self.support = np.ones_like(node).astype(int)
+            self.section = np.ones(len(bar))
 
-        self.force = np.zeros([len(bar), 2 * self.dof])
-        self.displacement = np.zeros([len(bar), 2 * self.dof])
-        self.f = np.zeros(1)
+            self.force = np.zeros([len(bar), 2 * self.dof])
+            self.displacement = np.zeros([len(bar), 2 * self.dof])
+            self.f = np.zeros(1)
 
-    def analysis(self):
-        nn = len(self.node)
-        ne = len(self.bar)
-        n_dof = self.dof * nn
-        d = self.node[self.bar[:, 1], :] - self.node[self.bar[:, 0], :]
-        length = np.sqrt((d ** 2).sum(axis=1))
+        def analysis(self):
+            nn = len(self.node)
+            ne = len(self.bar)
+            n_dof = self.dof * nn
+            d = self.node[self.bar[:, 1], :] - self.node[self.bar[:, 0], :]
+            length = np.sqrt((d ** 2).sum(axis=1))
 
-        # Form Structural Stiffness
-        matrix = np.zeros([2 * self.dof, 2 * self.dof])
-        k = np.zeros([ne, 2 * self.dof, 2 * self.dof])
-        ss = np.zeros([n_dof, n_dof])
-        for i in range(ne):
-            # Generate DOF
-            aux = self.dof * self.bar[i, :]
-            index = np.r_[aux[0]:aux[0] + self.dof, aux[1]:aux[1] + self.dof]
-            # Element Stiffness Matrix
-            l: float = length[i]
-            fi = (12 * EI) / (ks * GA * l ** 2)
+            # Form Structural Stiffness
+            matrix = np.zeros([2 * self.dof, 2 * self.dof])
+            k = np.zeros([ne, 2 * self.dof, 2 * self.dof])
+            ss = np.zeros([n_dof, n_dof])
+            for i in range(ne):
+                # Generate DOF
+                aux = self.dof * self.bar[i, :]
+                index = np.r_[aux[0]:aux[0] + self.dof, aux[1]:aux[1] + self.dof]
+                # Element Stiffness Matrix
+                l: float = length[i]
+                fi = (12 * EI) / (ks * GA * l ** 2)
 
-            matrix[0] = [12, 6 * l, -12, 6 * l]
-            matrix[1] = [6 * l, (4 + fi) * l ** 2, -6 * l, (2 - fi) * l ** 2]
-            matrix[2] = [-12, -6 * l, 12, -6 * l]
-            matrix[3] = [6 * l, (2 - fi) * l ** 2, -6 * l, (4 + fi) * l ** 2]
+                matrix[0] = [12, 6 * l, -12, 6 * l]
+                matrix[1] = [6 * l, (4 + fi) * l ** 2, -6 * l, (2 - fi) * l ** 2]
+                matrix[2] = [-12, -6 * l, 12, -6 * l]
+                matrix[3] = [6 * l, (2 - fi) * l ** 2, -6 * l, (4 + fi) * l ** 2]
 
-            k[i] = (EI * matrix) / ((l ** 3) * (1 + fi))
+                k[i] = (EI * matrix) / ((l ** 3) * (1 + fi))
 
-            # Global Stiffness Matrix
-            ss[np.ix_(index, index)] += k[i]
+                # Global Stiffness Matrix
+                ss[np.ix_(index, index)] += k[i]
 
-        # Distributed Load
-        eq_load_ele = np.zeros([len(self.bar), 2 * self.dof])
-        for i in range(len(self.bar)):
-            l: float = length[i]
-            pi: float = self.distributed_load[i, 0]
-            pf: float = self.distributed_load[i, 1]
-            eq_load_ele[i, 0] = l * (21 * pi + 9 * pf) / 60
-            eq_load_ele[i, 1] = l * (l * (3 * pi + 2 * pf)) / 60
-            eq_load_ele[i, 2] = l * (9 * pi + 21 * pf) / 60
-            eq_load_ele[i, 3] = l * (l * (- 2 * pi - 3 * pf)) / 60
-
-        # Point Load
-        for i in range(len(self.bar)):
-            self.point_load[self.bar[i, 0], 0] += eq_load_ele[i, 0]
-            self.point_load[self.bar[i, 0], 1] += eq_load_ele[i, 1]
-            self.point_load[self.bar[i, 1], 0] += eq_load_ele[i, 2]
-            self.point_load[self.bar[i, 1], 1] += eq_load_ele[i, 3]
-
-        # Solution
-        free_dof = self.support.flatten().nonzero()[0]
-        kff = ss[np.ix_(free_dof, free_dof)]
-        p = self.point_load.flatten()
-        pf = p[free_dof]
-        uf = np.linalg.solve(kff, pf)
-        u = self.support.astype(float).flatten()
-        u[free_dof] = uf
-        u = u.reshape(nn, self.dof)
-        u_ele = np.concatenate((u[self.bar[:, 0]], u[self.bar[:, 1]]), axis=1)
-        for i in range(ne):
-            self.force[i] = np.dot(k[i], u_ele[i]) - eq_load_ele[i]
-            self.displacement[i] = u_ele[i]
-
-    def plot(self, deformed=False, scale=None, moment=False, shear=False, text=False):
-
-        if np.amax(self.displacement) > 10:
-            round_to_d = 0
-        else:
-            round_to_d = 4
-
-
-        plt.rcParams.update({'font.family': 'Arial'})
-        fig, axs = plt.subplots(4)
-        if deformed is True:
+            # Distributed Load
+            eq_load_ele = np.zeros([len(self.bar), 2 * self.dof])
             for i in range(len(self.bar)):
-                xi, xf = self.node[self.bar[i, 0], 0], self.node[self.bar[i, 1], 0]
-                yi, yf = self.node[self.bar[i, 0], 1], self.node[self.bar[i, 1], 1]
-                axs[0].plot([xi, xf], [yi, yf], color='b', linestyle='-', linewidth=2)
-            if scale is None:
-                scale = 1
+                l: float = length[i]
+                pi: float = self.distributed_load[i, 0]
+                pf: float = self.distributed_load[i, 1]
+                eq_load_ele[i, 0] = l * (21 * pi + 9 * pf) / 60
+                eq_load_ele[i, 1] = l * (l * (3 * pi + 2 * pf)) / 60
+                eq_load_ele[i, 2] = l * (9 * pi + 21 * pf) / 60
+                eq_load_ele[i, 3] = l * (l * (- 2 * pi - 3 * pf)) / 60
+
+            # Point Load
             for i in range(len(self.bar)):
-                dxi, dxf = self.node[self.bar[i, 0], 0], self.node[self.bar[i, 1], 0]
-                dyi = self.node[self.bar[i, 0], 1] + self.displacement[i, 0] * scale
-                dyf = self.node[self.bar[i, 1], 1] + self.displacement[i, 2] * scale
-                axs[0].plot([dxi, dxf], [dyi, dyf], color='r', linestyle='--', linewidth=2)
-                if text is True:
-                    axs[0].text(dxi, dyi, str(round(dyi / scale, round_to_d)), rotation=90)
-                    if i == len(self.bar) - 1:
-                        axs[0].text(dxf, dyf, str(round(dyf / scale, round_to_d)), rotation=90)
-            axs[0].axis('off')
-            axs[0].set_title('Deformation, m', y=-0.25,loc='left')
+                self.point_load[self.bar[i, 0], 0] += eq_load_ele[i, 0]
+                self.point_load[self.bar[i, 0], 1] += eq_load_ele[i, 1]
+                self.point_load[self.bar[i, 1], 0] += eq_load_ele[i, 2]
+                self.point_load[self.bar[i, 1], 1] += eq_load_ele[i, 3]
 
-        if moment is True:
-            axs[1].invert_yaxis()
+            # Solution
+            free_dof = self.support.flatten().nonzero()[0]
+            kff = ss[np.ix_(free_dof, free_dof)]
+            p = self.point_load.flatten()
+            pf = p[free_dof]
+            uf = np.linalg.solve(kff, pf)
+            u = self.support.astype(float).flatten()
+            u[free_dof] = uf
+            u = u.reshape(nn, self.dof)
+            u_ele = np.concatenate((u[self.bar[:, 0]], u[self.bar[:, 1]]), axis=1)
+            for i in range(ne):
+                self.force[i] = np.dot(k[i], u_ele[i]) - eq_load_ele[i]
+                self.displacement[i] = u_ele[i]
 
-            if np.amax(self.force) > 10:
-                round_to = 0
+        def plot(self, deformed=False, scale=None, moment=False, shear=False, text=False):
+
+            if np.amax(self.displacement) > 10:
+                round_to_d = 0
             else:
-                round_to = 4
-
-            for i in range(len(self.bar)):
-                mxi, mxf = self.node[self.bar[i, 0], 0], self.node[self.bar[i, 1], 0]
-                myi, myf = self.node[self.bar[i, 0], 1], self.node[self.bar[i, 1], 1]
-                axs[1].plot([mxi, mxf], [myi, myf], color='b', linestyle='-', linewidth=1)
-            for i in range(len(self.bar)):
-                ax, bx = self.node[self.bar[i, 0], 0], self.node[self.bar[i, 1], 0]
-                ay, by = - self.force[i, 1], self.force[i, 3]
-                axs[1].plot([ax, ax, bx, bx], [0, ay, by, 0], color='g', linestyle='-', linewidth=1)
-                axs[1].fill([ax, ax, bx, bx], [0, ay, by, 0], 'c', alpha=0.3)
-                if text is True:
-                    axs[1].text(ax, ay, str(round(ay, round_to)), rotation=90)
-                    if i == len(self.bar) - 1:
-                        axs[1].text(bx, by, str(round(by, round_to)), rotation=90)
-            axs[1].axis('off')
-            axs[1].set_title('Bending Moment Nm', y=-0.25,loc='left')
-        if shear is True:
-            for i in range(len(self.bar)):
-                sxi, sxf = self.node[self.bar[i, 0], 0], self.node[self.bar[i, 1], 0]
-                syi, syf = self.node[self.bar[i, 0], 1], self.node[self.bar[i, 1], 1]
-                axs[2].plot([sxi, sxf], [syi, syf], color='b', linestyle='-', linewidth=1)
-            for i in range(len(self.bar)):
-                cx, dx = self.node[self.bar[i, 0], 0], self.node[self.bar[i, 1], 0]
-                cy, dy = - self.force[i, 0], self.force[i, 2]
-                axs[2].plot([cx, cx, dx, dx], [0, cy, dy, 0], color='r', linestyle='-', linewidth=1)
-                axs[2].fill([cx, cx, dx, dx], [0, cy, dy, 0], 'orange', alpha=0.3)
-                if text is True:
-                    axs[2].text(cx, cy, str(round(cy, round_to)), rotation=90)
-                    if i == len(self.bar) - 1:
-                        axs[2].text(dx, dy, str(round(dy, round_to)), rotation=90)
-            axs[2].axis('off')
-            axs[2].set_title('Shear Force, N', y=-0.25,loc='left')
+                round_to_d = 4
 
 
-        if shear is True:
-            for i in range(len(self.bar)):
-                sxi, sxf = self.node[self.bar[i, 0], 0], self.node[self.bar[i, 1], 0]
-                syi, syf = self.node[self.bar[i, 0], 1], self.node[self.bar[i, 1], 1]
-                axs[3].plot([sxi, sxf], [syi, syf], color='b', linestyle='-', linewidth=1)
-            for i in range(len(self.bar)):
-                cx, dx = self.node[self.bar[i, 0], 0], self.node[self.bar[i, 1], 0]
-                cy, dy =  - self.distributed_load[i, 0], - self.distributed_load[i, 1]
-                axs[3].plot([cx, cx, dx, dx], [0, cy, dy, 0], color='r', linestyle='-', linewidth=1)
-                axs[3].fill([cx, cx, dx, dx], [0, cy, dy, 0], 'blue', alpha=0.3)
+            plt.rcParams.update({'font.family': 'Arial'})
+            fig, axs = plt.subplots(4)
+            if deformed is True:
+                for i in range(len(self.bar)):
+                    xi, xf = self.node[self.bar[i, 0], 0], self.node[self.bar[i, 1], 0]
+                    yi, yf = self.node[self.bar[i, 0], 1], self.node[self.bar[i, 1], 1]
+                    axs[0].plot([xi, xf], [yi, yf], color='b', linestyle='-', linewidth=2)
+                if scale is None:
+                    scale = 1
+                for i in range(len(self.bar)):
+                    dxi, dxf = self.node[self.bar[i, 0], 0], self.node[self.bar[i, 1], 0]
+                    dyi = self.node[self.bar[i, 0], 1] + self.displacement[i, 0] * scale
+                    dyf = self.node[self.bar[i, 1], 1] + self.displacement[i, 2] * scale
+                    axs[0].plot([dxi, dxf], [dyi, dyf], color='r', linestyle='--', linewidth=2)
+                    if text is True:
+                        axs[0].text(dxi, dyi, str(round(dyi / scale, round_to_d)), rotation=90)
+                        if i == len(self.bar) - 1:
+                            axs[0].text(dxf, dyf, str(round(dyf / scale, round_to_d)), rotation=90)
+                axs[0].axis('off')
+                axs[0].set_title('Deformation, m', y=-0.25,loc='left')
 
-            axs[3].text(0, np.amax(-self.distributed_load), str(round(self.distributed_load[0, 0], round_to)), rotation=0)
+            if moment is True:
+                axs[1].invert_yaxis()
 
-            #axs[3].text(0, 0, str(round(dy, round_to)), rotation=90)
+                if np.amax(self.force) > 10:
+                    round_to = 0
+                else:
+                    round_to = 4
+
+                for i in range(len(self.bar)):
+                    mxi, mxf = self.node[self.bar[i, 0], 0], self.node[self.bar[i, 1], 0]
+                    myi, myf = self.node[self.bar[i, 0], 1], self.node[self.bar[i, 1], 1]
+                    axs[1].plot([mxi, mxf], [myi, myf], color='b', linestyle='-', linewidth=1)
+                for i in range(len(self.bar)):
+                    ax, bx = self.node[self.bar[i, 0], 0], self.node[self.bar[i, 1], 0]
+                    ay, by = - self.force[i, 1], self.force[i, 3]
+                    axs[1].plot([ax, ax, bx, bx], [0, ay, by, 0], color='g', linestyle='-', linewidth=1)
+                    axs[1].fill([ax, ax, bx, bx], [0, ay, by, 0], 'c', alpha=0.3)
+                    if text is True:
+                        axs[1].text(ax, ay, str(round(ay, round_to)), rotation=90)
+                        if i == len(self.bar) - 1:
+                            axs[1].text(bx, by, str(round(by, round_to)), rotation=90)
+                axs[1].axis('off')
+                axs[1].set_title('Bending Moment Nm', y=-0.25,loc='left')
+            if shear is True:
+                for i in range(len(self.bar)):
+                    sxi, sxf = self.node[self.bar[i, 0], 0], self.node[self.bar[i, 1], 0]
+                    syi, syf = self.node[self.bar[i, 0], 1], self.node[self.bar[i, 1], 1]
+                    axs[2].plot([sxi, sxf], [syi, syf], color='b', linestyle='-', linewidth=1)
+                for i in range(len(self.bar)):
+                    cx, dx = self.node[self.bar[i, 0], 0], self.node[self.bar[i, 1], 0]
+                    cy, dy = - self.force[i, 0], self.force[i, 2]
+                    axs[2].plot([cx, cx, dx, dx], [0, cy, dy, 0], color='r', linestyle='-', linewidth=1)
+                    axs[2].fill([cx, cx, dx, dx], [0, cy, dy, 0], 'orange', alpha=0.3)
+                    if text is True:
+                        axs[2].text(cx, cy, str(round(cy, round_to)), rotation=90)
+                        if i == len(self.bar) - 1:
+                            axs[2].text(dx, dy, str(round(dy, round_to)), rotation=90)
+                axs[2].axis('off')
+                axs[2].set_title('Shear Force, N', y=-0.25,loc='left')
 
 
-            axs[3].axis('off')
-            axs[3].set_title('Loading, N', y=-0.25, loc='left')
-            axs[3].plot(0, np.amax(-self.distributed_load)*2)
+            if shear is True:
+                for i in range(len(self.bar)):
+                    sxi, sxf = self.node[self.bar[i, 0], 0], self.node[self.bar[i, 1], 0]
+                    syi, syf = self.node[self.bar[i, 0], 1], self.node[self.bar[i, 1], 1]
+                    axs[3].plot([sxi, sxf], [syi, syf], color='b', linestyle='-', linewidth=1)
+                for i in range(len(self.bar)):
+                    cx, dx = self.node[self.bar[i, 0], 0], self.node[self.bar[i, 1], 0]
+                    cy, dy =  - self.distributed_load[i, 0], - self.distributed_load[i, 1]
+                    axs[3].plot([cx, cx, dx, dx], [0, cy, dy, 0], color='r', linestyle='-', linewidth=1)
+                    axs[3].fill([cx, cx, dx, dx], [0, cy, dy, 0], 'blue', alpha=0.3)
+
+                axs[3].text(0, np.amax(-self.distributed_load), str(round(self.distributed_load[0, 0], round_to)), rotation=0)
+
+                #axs[3].text(0, 0, str(round(dy, round_to)), rotation=90)
 
 
-            if LP1_load > LP2_load:
-                len_LP1 =  np.amax(-self.distributed_load)*2
-                len_LP2 = (LP2_load/LP1_load) * np.amax(-self.distributed_load) + np.amax(-self.distributed_load)
-            else:
-                len_LP2 =  np.amax(-self.distributed_load)*2
-                len_LP1 = (LP1_load/LP2_load) * np.amax(-self.distributed_load) + np.amax(-self.distributed_load)
+                axs[3].axis('off')
+                axs[3].set_title('Loading, N', y=-0.25, loc='left')
+                axs[3].plot(0, np.amax(-self.distributed_load)*2)
 
 
-            if LP1 > 0:
-                axs[3].arrow(LP1, len_LP1, 0, -len_LP1 + 250,  head_length = 300, head_width = 0.3,  width = 0.05, ec ='green')
-                axs[3].text(LP1, len_LP1, str(round(LP1_load, 0)), rotation=0)
-
-            if LP2 > 0:
-                axs[3].arrow(LP2, len_LP2, 0, -len_LP2 + 250,  head_length = 300, head_width = 0.3,  width = 0.05, ec ='green')
-                axs[3].text(LP2, len_LP2, str(round(LP2_load, 0)), rotation=0)
-
+                if LP1_load > LP2_load:
+                    len_LP1 =  np.amax(-self.distributed_load)*2
+                    len_LP2 = (LP2_load/LP1_load) * np.amax(-self.distributed_load) + np.amax(-self.distributed_load)
+                else:
+                    len_LP2 =  np.amax(-self.distributed_load)*2
+                    len_LP1 = (LP1_load/LP2_load) * np.amax(-self.distributed_load) + np.amax(-self.distributed_load)
 
 
-def aaply_load_boundary_cond():
+                if LP1 > 0:
+                    axs[3].arrow(LP1, len_LP1, 0, -len_LP1 + 250,  head_length = 300, head_width = 0.3,  width = 0.05, ec ='green')
+                    axs[3].text(LP1, len_LP1, str(round(LP1_load, 0)), rotation=0)
+
+                if LP2 > 0:
+                    axs[3].arrow(LP2, len_LP2, 0, -len_LP2 + 250,  head_length = 300, head_width = 0.3,  width = 0.05, ec ='green')
+                    axs[3].text(LP2, len_LP2, str(round(LP2_load, 0)), rotation=0)
+
+
+
+
 
     if LP1 > total_beam:
         LP1_load = 0
@@ -319,11 +319,13 @@ def aaply_load_boundary_cond():
 
     beam_1.analysis()
     np.set_printoptions(precision=5, suppress=True)
-    beam_1.plot(deformed=True, scale=500, moment=True, shear=True, text=True)
+    #beam_1.plot(deformed=True, scale=500, moment=True, shear=True, text=True)
 
     print(beam_1.distributed_load)
     print(beam_1.force)
     print(beam_1.displacement)
 
     # Show plot
-    plt.show()
+    #plt.show()
+
+    return beam_1.displacement.max()
