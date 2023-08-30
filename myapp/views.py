@@ -2,7 +2,7 @@ from django.shortcuts import render
 from django.http import JsonResponse
 from django.core import serializers
 from .forms import ParticipantForm
-from .models import Participant
+from .models import Calculation
 from .core_calculations import add_something
 
 from .FEM_beam_met_puntlast import calculate_beam
@@ -12,7 +12,7 @@ import json
 
 def displayData(request):
     form = ParticipantForm()
-    participants = Participant.objects.all()
+    participants = Calculation.objects.all()
     return render(request, "index.html", {"form": form, "participants": participants})
 
 
@@ -27,7 +27,7 @@ def postParticipant(request):
 
         # adjusting request with new data
         post = request.POST.copy()  # to make it mutable
-        post['height'] = displacc # add_something(post['length'])
+        post['EI'] = displacc # add_something(post['length'])
         form = ParticipantForm(post)
 
 

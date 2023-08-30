@@ -2,21 +2,17 @@ from django.db import models
 
 # Create your models here.
 
-class Participant(models.Model):
+class Calculation(models.Model):
     # participant form fields
-    EI = models.CharField(max_length=100)
-    GA = models.CharField(max_length=100)
+    EI = models.CharField(max_length=100, default='d')
+    GA = models.CharField(max_length=100, default='d')
 
-    L0 = models.CharField(max_length=100)
-    L1 = models.CharField(max_length=100)
-    L2 = models.CharField(max_length=100)
-    L3 = models.CharField(max_length=100)
+    L = models.CharField(max_length=100, default='d')
 
-    LP1 = models.CharField(max_length=100)
-    LP2 = models.CharField(max_length=100)
+    LP1 = models.CharField(max_length=100, default='d')
+    LP2 = models.CharField(max_length=100, default='d')
 
-    LP1_load = models.CharField(max_length=100)
-    LP2_load = models.CharField(max_length=100)
+    q_load = models.IntegerField(blank=True, null=True, default=100)
 
 
 
